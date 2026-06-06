@@ -1,0 +1,24 @@
+model job_shop
+
+variables {
+  Interval: job1_task1, job1_task2, job2_task1, job2_task2
+  Set[Interval]: machine1, machine2
+}
+
+domains {
+  duration(job1_task1) = 3
+  duration(job1_task2) = 2
+  duration(job2_task1) = 2
+  duration(job2_task2) = 4
+  machine1 = {job1_task1, job2_task2}
+  machine2 = {job1_task2, job2_task1}
+}
+
+constraints {
+  no_overlap(machine1)
+  no_overlap(machine2)
+  end_of(job1_task1) <= start_of(job1_task2)
+  end_of(job2_task1) <= start_of(job2_task2)
+}
+
+minimize end_of(job2_task2)

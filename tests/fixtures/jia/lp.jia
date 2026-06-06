@@ -1,0 +1,18 @@
+@model lp
+model production
+
+variables {
+  Real: x, y
+}
+
+domains {
+  x in 0..10
+  y in 0.0..inf
+}
+
+constraints {
+  x + y >= 5
+  2 * x + y <= 12
+}
+
+minimize 3 * x + 2 * y
