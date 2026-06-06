@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "jia-parse", about = "Parse PDDL and .jia model files")]
+#[command(name = "jia-parse", version, about = "Parse PDDL and .jia model files")]
 struct Cli {
     #[command(subcommand)]
     command: Command,

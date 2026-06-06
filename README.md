@@ -71,6 +71,18 @@ Inspectable examples live under `examples/`:
 
 ## Compile
 
+Install from GitHub:
+
+```bash
+cargo install --git https://github.com/Feasbl/jia-parse.git --locked
+```
+
+After the crate is published to crates.io:
+
+```bash
+cargo install jia-parse --locked
+```
+
 Build from source:
 
 ```bash
