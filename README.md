@@ -116,3 +116,7 @@ let domain = jia_parse::pddl::parse_domain_str(domain_source)?;
 let problem = jia_parse::pddl::parse_problem_str(problem_source)?;
 let model = jia_parse::jia::parse_model_str(jia_source)?;
 ```
+
+## License
+
+Apache-2.0. See `LICENSE`.

@@ -7,7 +7,7 @@ readme = "README.md"
 repository = "https://github.com/Feasbl/jia-parse"
 homepage = "https://github.com/Feasbl/jia-parse"
 documentation = "https://docs.rs/jia-parse"
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0"
 keywords = ["pddl", "parser", "planning", "jia", "cli"]
 categories = ["command-line-utilities", "parser-implementations"]
 
