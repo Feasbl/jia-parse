@@ -113,4 +113,16 @@ mod tests {
         let decls = parser.parse_variables_block().unwrap();
         assert_eq!(decls[0].var_type, VarType::SetInteger);
     }
+
+    #[test]
+    fn test_invalid_types() {
+        for input in [
+            "variables { Set[String]: bad }",
+            "variables { Boolean: bad }",
+        ] {
+            let tokens = tokenize(input).unwrap();
+            let mut parser = Parser::new(&tokens);
+            assert!(parser.parse_variables_block().is_err(), "{input}");
+        }
+    }
 }

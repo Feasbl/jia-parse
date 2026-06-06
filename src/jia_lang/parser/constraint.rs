@@ -224,4 +224,23 @@ mod tests {
             _ => panic!("expected comparison"),
         }
     }
+
+    #[test]
+    fn test_lt_gt_ne_and_missing_comparator_errors() {
+        for (input, expected) in [
+            ("constraints { x < 1 }", CmpOp::Lt),
+            ("constraints { x > 1 }", CmpOp::Gt),
+            ("constraints { x != 1 }", CmpOp::Ne),
+        ] {
+            let cs = parse_constraints(input);
+            match &cs[0] {
+                Constraint::Comparison { op, .. } => assert_eq!(*op, expected),
+                _ => panic!("expected comparison"),
+            }
+        }
+
+        let tokens = tokenize("constraints { x + 1 }").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.parse_constraints_block().is_err());
+    }
 }

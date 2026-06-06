@@ -59,6 +59,16 @@ jia-parse pddl --domain domain.pddl --problem problem.pddl --validate
 jia-parse jia model.jia --validate
 ```
 
+## Examples
+
+Inspectable examples live under `examples/`:
+
+- `examples/pddl/delivery/` - a compact typed PDDL domain and problem
+- `examples/pddl/advanced/` - durative actions, numeric fluents, derived predicates, preferences, and constraints
+- `examples/jia/job_shop.jia` - CP scheduling model
+- `examples/jia/resource_schedule.jia` - CP scheduling model with optional tasks, real bounds, and resource demand
+- `examples/jia/production_lp.jia` - LP-style `.jia` model
+
 ## Compile
 
 Build from source:

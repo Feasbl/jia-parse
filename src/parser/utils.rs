@@ -77,3 +77,38 @@ pub(super) fn parse_number_literal(p: &mut Parser) -> Result<f64, ParseError> {
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lexer::tokenize;
+    use crate::parser::cursor::Parser;
+
+    #[test]
+    fn skip_helpers_skip_balanced_forms() {
+        let tokens = tokenize("(metadata (nested value)) (define (domain d))").unwrap();
+        let mut parser = Parser::new(&tokens);
+        skip_to_define(&mut parser).unwrap();
+        assert!(parser.at_lparen());
+
+        let tokens = tokenize("(unknown (nested value)) next").unwrap();
+        let mut parser = Parser::new(&tokens);
+        skip_sexp(&mut parser).unwrap();
+        assert!(parser.at_symbol("next"));
+    }
+
+    #[test]
+    fn comparison_and_number_error_branches() {
+        let tokens = tokenize("name").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert_eq!(parse_compare_op(&mut parser).unwrap(), CompareOp::Eq);
+
+        let tokens = tokenize(":kw").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_compare_op(&mut parser).is_err());
+
+        let tokens = tokenize("name").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_number_literal(&mut parser).is_err());
+    }
+}

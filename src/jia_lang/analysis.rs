@@ -267,6 +267,8 @@ impl std::fmt::Display for VarType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Span;
+    use crate::jia_lang::ast::{ArithOp, Expr, VarDecl};
     use crate::jia_lang::lexer::tokenize;
     use crate::jia_lang::parser::parse_model;
 
@@ -353,6 +355,7 @@ constraints {
 
         // Nothing at col 5 (space).
         assert!(token_at_position(&tokens, 0, 5).is_none());
+        assert!(token_at_position(&tokens, 1, 0).is_none());
     }
 
     #[test]
@@ -362,6 +365,28 @@ constraints {
         assert_eq!(token_text_len(&tokens[1]), 2); // "42"
         assert_eq!(token_text_len(&tokens[2]), 2); // "<="
         assert_eq!(token_text_len(&tokens[3]), 2); // ".."
+
+        assert_eq!(
+            token_text_len(&Token {
+                kind: TokenKind::Number(0),
+                span: Span::new(0, 1, 1)
+            }),
+            1
+        );
+        assert_eq!(
+            token_text_len(&Token {
+                kind: TokenKind::Number(-123),
+                span: Span::new(0, 1, 1)
+            }),
+            4
+        );
+        assert_eq!(
+            token_text_len(&Token {
+                kind: TokenKind::Float(12.5),
+                span: Span::new(0, 1, 1)
+            }),
+            4
+        );
     }
 
     #[test]
@@ -415,5 +440,78 @@ domains {
         let (_model, table) = build_table(input);
         let summary = table.symbols["a"].domain_summary.as_deref().unwrap();
         assert!(summary.contains("demand(res) = 3"));
+    }
+
+    #[test]
+    fn test_real_domain_summary_and_missing_append_target() {
+        let mut symbols = HashMap::new();
+        append_domain_summary(&mut symbols, "missing", "ignored");
+
+        let input = r#"
+model test
+variables { Real: rate, slack }
+domains {
+  rate in 1.5..3.5
+  slack in -inf..inf
+}
+"#;
+        let (_model, table) = build_table(input);
+        assert_eq!(
+            table.symbols["rate"].domain_summary.as_deref(),
+            Some("in 1.5..3.5")
+        );
+        assert_eq!(
+            table.symbols["slack"].domain_summary.as_deref(),
+            Some("in -inf..inf")
+        );
+
+        let tokens = tokenize("model manual\nvariables { Real: exact }").unwrap();
+        let model = JiaModel {
+            model_type: None,
+            name: "manual".to_string(),
+            variables: vec![VarDecl {
+                names: vec!["exact".to_string()],
+                var_type: VarType::Real,
+            }],
+            domains: vec![DomainStmt::RealDomain {
+                name: "exact".to_string(),
+                domain: Domain::RealFixed(2.25),
+            }],
+            constraints: Vec::new(),
+            objective: None,
+        };
+        let table = build_symbol_table(&model, &tokens);
+        assert_eq!(
+            table.symbols["exact"].domain_summary.as_deref(),
+            Some("real = 2.25")
+        );
+    }
+
+    #[test]
+    fn test_collect_expr_names() {
+        let expr = Expr::BinaryOp {
+            op: ArithOp::Add,
+            left: Box::new(Expr::BinaryOp {
+                op: ArithOp::Sub,
+                left: Box::new(Expr::StartOf("a".to_string())),
+                right: Box::new(Expr::Negate(Box::new(Expr::EndOf("b".to_string())))),
+            }),
+            right: Box::new(Expr::BinaryOp {
+                op: ArithOp::Mul,
+                left: Box::new(Expr::DurationOf("c".to_string())),
+                right: Box::new(Expr::BinaryOp {
+                    op: ArithOp::Div,
+                    left: Box::new(Expr::PresentOf("d".to_string())),
+                    right: Box::new(Expr::Var("e".to_string())),
+                }),
+            }),
+        };
+        let mut names = Vec::new();
+        _collect_expr_names(&expr, &mut names);
+        assert_eq!(names, ["a", "b", "c", "d", "e"]);
+
+        _collect_expr_names(&Expr::Number(1), &mut names);
+        _collect_expr_names(&Expr::Float(1.5), &mut names);
+        assert_eq!(names, ["a", "b", "c", "d", "e"]);
     }
 }

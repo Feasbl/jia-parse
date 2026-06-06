@@ -1,0 +1,33 @@
+@model cp
+model resource_schedule
+
+variables {
+  Interval: task_a, task_b, summary
+  Integer: workers
+  Real: slack, rate, offset
+  Set[Interval]: machine
+  Set[Integer]: crew
+}
+
+domains {
+  duration(task_a, task_b) = 2.5
+  start(task_a, task_b) in -inf..10.5
+  end(task_a, task_b) in 0..20
+  optional(task_b)
+  workers in {1, 2, 3}
+  machine = {task_a, task_b}
+  crew = {workers}
+  demand(task_a, machine) = 2
+  slack in free
+  rate in 0.0..3.5
+  offset in -inf..inf
+}
+
+constraints {
+  span(summary, machine)
+  alternative(summary, machine)
+  cumulative(machine, workers)
+  present_of(task_b) != 0
+}
+
+maximize end_of(summary) - start_of(task_a)

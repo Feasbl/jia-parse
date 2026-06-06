@@ -142,3 +142,41 @@ pub(super) fn parse_function_term(p: &mut Parser) -> Result<FunctionTerm, ParseE
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lexer::tokenize;
+    use crate::parser::cursor::Parser;
+
+    #[test]
+    fn typed_lists_support_dash_prefixed_types_and_either() {
+        let tokens = tokenize("a b -thing c - (either x y))").unwrap();
+        let mut parser = Parser::new(&tokens);
+        let groups = parse_typed_list_names(&mut parser).unwrap();
+
+        assert_eq!(groups[0].type_name.as_deref(), Some("thing"));
+        assert_eq!(groups[1].type_name.as_deref(), Some("either:x:y"));
+    }
+
+    #[test]
+    fn term_parsers_report_invalid_tokens() {
+        let tokens = tokenize(")").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_term(&mut parser).is_err());
+
+        let tokens = tokenize("?x").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_term_name_only(&mut parser).is_err());
+    }
+
+    #[test]
+    fn function_term_supports_bare_zero_arity_name() {
+        let tokens = tokenize("total-cost").unwrap();
+        let mut parser = Parser::new(&tokens);
+        let function = parse_function_term(&mut parser).unwrap();
+
+        assert_eq!(function.name, "total-cost");
+        assert!(function.args.is_empty());
+    }
+}

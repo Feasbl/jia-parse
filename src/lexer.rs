@@ -327,4 +327,17 @@ mod tests {
         assert!(tokens[1].symbol_eq("-"));
         assert_eq!(tokens[2].kind, TokenKind::Number(3.0));
     }
+
+    #[test]
+    fn test_strings_with_newlines_symbols_hash_and_unexpected_char() {
+        let tokens = tokenize("\"line one\nline two\" #tag").unwrap();
+        assert_eq!(
+            tokens[0].kind,
+            TokenKind::Symbol("line one\nline two".to_string())
+        );
+        assert!(tokens[1].symbol_eq("#tag"));
+
+        let err = tokenize("@").unwrap_err();
+        assert!(err.message.contains("unexpected character"));
+    }
 }

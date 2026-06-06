@@ -222,3 +222,89 @@ pub(super) fn is_numeric_start(p: &Parser) -> bool {
         _ => false,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lexer::tokenize;
+    use crate::parser::cursor::Parser;
+
+    fn parse_numeric(input: &str) -> NumericExpr {
+        let tokens = tokenize(input).unwrap();
+        let mut parser = Parser::new(&tokens);
+        parse_numeric_expr(&mut parser).unwrap()
+    }
+
+    fn parse_metric(input: &str) -> NumericExpr {
+        let tokens = tokenize(input).unwrap();
+        let mut parser = Parser::new(&tokens);
+        parse_metric_expr(&mut parser).unwrap()
+    }
+
+    #[test]
+    fn numeric_expr_variants() {
+        assert!(matches!(parse_numeric("(- 5)"), NumericExpr::Negate(_)));
+        assert!(matches!(
+            parse_numeric("(/ (* 8 2) (+ 1 3))"),
+            NumericExpr::BinaryOp { .. }
+        ));
+        assert!(matches!(
+            parse_numeric("(fuel truck1)"),
+            NumericExpr::FunctionCall(FunctionTerm { .. })
+        ));
+        assert_eq!(parse_numeric("?duration"), NumericExpr::Duration);
+        assert_eq!(parse_numeric("total-time"), NumericExpr::TotalTime);
+        assert!(matches!(
+            parse_numeric("fuel"),
+            NumericExpr::FunctionCall(FunctionTerm { .. })
+        ));
+    }
+
+    #[test]
+    fn metric_expr_variants_and_errors() {
+        assert_eq!(parse_metric("(total-time)"), NumericExpr::TotalTime);
+        assert_eq!(parse_metric("total-time"), NumericExpr::TotalTime);
+        assert!(matches!(parse_metric("(- 5)"), NumericExpr::Negate(_)));
+        assert!(matches!(
+            parse_metric("(+ total-time cost)"),
+            NumericExpr::BinaryOp { .. }
+        ));
+        assert!(matches!(
+            parse_metric("(distance a b)"),
+            NumericExpr::FunctionCall(FunctionTerm { .. })
+        ));
+        assert!(matches!(
+            parse_metric("cost"),
+            NumericExpr::FunctionCall(FunctionTerm { .. })
+        ));
+
+        let tokens = tokenize(")").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_metric_expr(&mut parser).is_err());
+
+        let tokens = tokenize("(42)").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_metric_expr(&mut parser).is_err());
+    }
+
+    #[test]
+    fn numeric_start_lookahead_variants() {
+        for (input, expected) in [
+            ("1", true),
+            ("?duration", true),
+            ("(+ 1 2)", true),
+            ("(fuel truck1)", true),
+            ("(and (ready))", false),
+            ("(", false),
+            ("ready", false),
+        ] {
+            let tokens = tokenize(input).unwrap();
+            let parser = Parser::new(&tokens);
+            assert_eq!(is_numeric_start(&parser), expected, "{input}");
+        }
+
+        let tokens = Vec::new();
+        let parser = Parser::new(&tokens);
+        assert!(!is_numeric_start(&parser));
+    }
+}

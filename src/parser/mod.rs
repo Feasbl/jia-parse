@@ -227,4 +227,69 @@ mod tests {
         assert!(da.condition.is_some());
         assert!(da.effect.is_some());
     }
+
+    #[test]
+    fn parser_skips_unknown_domain_and_problem_sections() {
+        let domain = parse_domain_str(
+            r#"
+(define (domain test)
+  (:requirements :strips)
+  (:unknown-section (nested value))
+  (legacy-section (ignored value))
+  (:action a
+    :parameters ()
+    :precondition (and)
+    :unknown-action-field (ignored value)
+    :effect (and))
+  (:durative-action d
+    :parameters ()
+    :duration (= ?duration 1)
+    :unknown-durative-field (ignored value)
+    :condition (and)
+    :effect (and))
+)
+"#,
+        )
+        .unwrap();
+        assert_eq!(domain.actions.len(), 1);
+        assert_eq!(domain.durative_actions.len(), 1);
+
+        let problem = parse_problem_str(
+            r#"
+(define (problem p)
+  (:domain test)
+  (:unknown-section (nested value))
+  (legacy-section (ignored value))
+  (:init)
+  (:goal (and))
+)
+"#,
+        )
+        .unwrap();
+        assert_eq!(problem.domain_name, "test");
+    }
+
+    #[test]
+    fn parser_reports_malformed_conditions_effects_and_metrics() {
+        for input in [
+            "(define (problem p) (:domain d) (:goal 42))",
+            "(define (problem p) (:domain d) (:goal (42)))",
+            "(define (problem p) (:domain d) (:goal (> ?x 1)))",
+            "(define (problem p) (:domain d) (:goal (at",
+            "(define (problem p) (:domain d) (:goal (over",
+            "(define (problem p) (:domain d) (:goal (and)) (:metric fastest 1))",
+            "(define (problem p) (:domain d) (:goal (and)) (:metric minimize ?x))",
+            "(define (problem p) (:domain d) (:goal (and)) (:metric minimize (42)))",
+        ] {
+            assert!(parse_problem_str(input).is_err(), "{input}");
+        }
+
+        for input in [
+            "(define (domain d) (:action a :parameters () :precondition (and) :effect (42)))",
+            "(define (domain d) (:action a :parameters () :precondition (and) :effect (at",
+            "(define (domain d) (:action a :parameters () :precondition (and) :effect (increase (cost) ?x)))",
+        ] {
+            assert!(parse_domain_str(input).is_err(), "{input}");
+        }
+    }
 }

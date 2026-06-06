@@ -347,4 +347,33 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn test_domain_error_branches() {
+        for input in [
+            "domains { 1 }",
+            "domains { x }",
+            "domains { duration(a) }",
+            "domains { duration(a) = x }",
+            "domains { x in nope }",
+            "domains { x in 0..nope }",
+            "domains { x in 0.. }",
+        ] {
+            let tokens = tokenize(input).unwrap();
+            let mut parser = Parser::new(&tokens);
+            assert!(parser.parse_domains_block().is_err(), "{input}");
+        }
+    }
+
+    #[test]
+    fn test_domain_spec_inf_range_start() {
+        let stmts = parse_domains("domains { x in inf..10 }");
+        assert!(matches!(
+            stmts[0],
+            DomainStmt::IntegerDomain {
+                domain: Domain::RealRange { min, max },
+                ..
+            } if min.is_infinite() && min.is_sign_positive() && max == 10.0
+        ));
+    }
 }

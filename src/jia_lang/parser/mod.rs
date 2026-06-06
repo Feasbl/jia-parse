@@ -405,4 +405,34 @@ minimize 2 * x + 3 * y
             _ => panic!("expected comparison"),
         }
     }
+
+    #[test]
+    fn parser_expect_helpers_report_errors() {
+        let tokens = crate::jia_lang::lexer::tokenize("name").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_token(TokenKind::LBrace).is_err());
+
+        let tokens = Vec::new();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_token(TokenKind::LBrace).is_err());
+        assert!(parser.expect_ident().is_err());
+        assert!(parser.expect_number().is_err());
+
+        let tokens = crate::jia_lang::lexer::tokenize("123").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_ident().is_err());
+
+        let tokens = crate::jia_lang::lexer::tokenize("actual").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_ident_matching("expected").is_err());
+
+        let tokens = crate::jia_lang::lexer::tokenize("name").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_number().is_err());
+    }
+
+    #[test]
+    fn parse_model_reports_unexpected_non_identifier_token() {
+        assert!(parse_model_str("model test\n{").is_err());
+    }
 }

@@ -207,4 +207,16 @@ mod tests {
     fn test_negation() {
         assert_eq!(parse_expr("-5"), Expr::Negate(Box::new(Expr::Number(5))));
     }
+
+    #[test]
+    fn test_present_of_and_expression_error() {
+        assert_eq!(
+            parse_expr("present_of(task_a)"),
+            Expr::PresentOf("task_a".to_string())
+        );
+
+        let tokens = tokenize(")").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.parse_expr().is_err());
+    }
 }

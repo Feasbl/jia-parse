@@ -1,7 +1,7 @@
-const PDDL_DOMAIN: &str = include_str!("fixtures/pddl/domain.pddl");
-const PDDL_PROBLEM: &str = include_str!("fixtures/pddl/problem.pddl");
-const JIA_CP: &str = include_str!("fixtures/jia/job_shop.jia");
-const JIA_LP: &str = include_str!("fixtures/jia/lp.jia");
+const PDDL_DOMAIN: &str = include_str!("../examples/pddl/delivery/domain.pddl");
+const PDDL_PROBLEM: &str = include_str!("../examples/pddl/delivery/problem.pddl");
+const JIA_CP: &str = include_str!("../examples/jia/job_shop.jia");
+const JIA_LP: &str = include_str!("../examples/jia/production_lp.jia");
 
 #[test]
 fn parses_full_pddl_domain_fixture_with_public_api() {

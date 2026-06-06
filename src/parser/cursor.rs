@@ -157,3 +157,60 @@ impl<'a> Parser<'a> {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lexer::tokenize;
+
+    #[test]
+    fn cursor_expect_successes_and_predicates() {
+        let tokens = tokenize("(define :kw ?x 12)").unwrap();
+        let mut parser = Parser::new(&tokens);
+
+        assert!(parser.at_lparen());
+        parser.expect_lparen().unwrap();
+        assert!(parser.at_symbol("define"));
+        parser.expect_symbol_eq("define").unwrap();
+        assert!(parser.at_keyword_any());
+        assert_eq!(parser.expect_keyword().unwrap(), "kw");
+        assert_eq!(parser.expect_variable().unwrap(), "?x");
+        assert!(parser.at_number());
+        assert!(parser.advance().is_ok());
+        assert!(parser.at_rparen());
+        parser.expect_rparen().unwrap();
+        assert!(parser.advance().is_err());
+    }
+
+    #[test]
+    fn cursor_expect_errors() {
+        let tokens = tokenize(":kw").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_lparen().is_err());
+
+        let tokens = tokenize("(").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_rparen().is_err());
+
+        let tokens = tokenize("?x").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_symbol().is_err());
+
+        let tokens = tokenize("actual").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_symbol_eq("expected").is_err());
+
+        let tokens = tokenize("name").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_keyword().is_err());
+
+        let tokens = tokenize("name").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parser.expect_variable().is_err());
+
+        let empty = Vec::new();
+        let parser = Parser::new(&empty);
+        assert_eq!(parser.current_span(), Span::new(0, 1, 1));
+        assert_eq!(parser.eof_span(), Span::new(0, 1, 1));
+    }
+}

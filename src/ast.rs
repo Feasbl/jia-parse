@@ -546,3 +546,41 @@ fn term_name(t: &Term) -> &str {
         Term::Variable(v) => v.as_str(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn problem_sort_handles_zero_arity_predicates_and_variable_terms() {
+        let mut problem = Problem {
+            name: "p".to_string(),
+            domain_name: "d".to_string(),
+            requirements: Vec::new(),
+            objects: Vec::new(),
+            init: vec![
+                InitElement::NumericAssignment(
+                    FunctionTerm {
+                        name: "cost".to_string(),
+                        args: vec![Term::Variable("?x".to_string())],
+                    },
+                    1.0,
+                ),
+                InitElement::Predicate(AtomicFormula {
+                    name: "ready".to_string(),
+                    args: Vec::new(),
+                }),
+            ],
+            goal: Condition::And(Vec::new()),
+            metric: None,
+            constraints: None,
+        };
+
+        problem.sort_alphabetically();
+        assert!(matches!(problem.init[0], InitElement::Predicate(_)));
+        assert!(matches!(
+            problem.init[1],
+            InitElement::NumericAssignment(_, _)
+        ));
+    }
+}

@@ -2,11 +2,12 @@ use assert_cmd::Command;
 use predicates::prelude::*;
 use serde_json::Value;
 
-const PDDL_DOMAIN: &str = "tests/fixtures/pddl/domain.pddl";
-const PDDL_PROBLEM: &str = "tests/fixtures/pddl/problem.pddl";
+const PDDL_DOMAIN: &str = "examples/pddl/delivery/domain.pddl";
+const PDDL_PROBLEM: &str = "examples/pddl/delivery/problem.pddl";
 const BAD_PDDL_DOMAIN: &str = "tests/fixtures/pddl/malformed-domain.pddl";
-const JIA_CP: &str = "tests/fixtures/jia/job_shop.jia";
-const JIA_LP: &str = "tests/fixtures/jia/lp.jia";
+const JIA_CP: &str = "examples/jia/job_shop.jia";
+const JIA_LP: &str = "examples/jia/production_lp.jia";
+const JIA_RESOURCE: &str = "examples/jia/resource_schedule.jia";
 const BAD_JIA: &str = "tests/fixtures/jia/malformed.jia";
 
 #[test]
@@ -154,6 +155,48 @@ fn jia_success_stats_and_json_work_for_full_files() {
     assert_eq!(json["name"], "job_shop");
     assert_eq!(json["variables"].as_array().unwrap().len(), 2);
     assert_eq!(json["constraints"].as_array().unwrap().len(), 4);
+}
+
+#[test]
+fn jia_stats_reports_model_without_objective() {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(
+        &mut file,
+        b"model no_objective\nvariables { Integer: x }\ndomains { x in 0..1 }\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("jia-parse")
+        .unwrap()
+        .args(["jia", file.path().to_str().unwrap(), "--stats"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Has objective: no"));
+}
+
+#[test]
+fn advanced_examples_are_accepted_by_cli() {
+    Command::cargo_bin("jia-parse")
+        .unwrap()
+        .args(["jia", JIA_RESOURCE, "--json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("resource_schedule"));
+
+    Command::cargo_bin("jia-parse")
+        .unwrap()
+        .args([
+            "pddl",
+            "--domain",
+            "examples/pddl/advanced/domain.pddl",
+            "--problem",
+            "examples/pddl/advanced/problem.pddl",
+            "--stats",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Problem: advanced-problem"))
+        .stdout(predicate::str::contains("Has constraints: yes"));
 }
 
 #[test]
