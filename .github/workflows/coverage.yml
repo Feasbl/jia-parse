@@ -30,19 +30,22 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Generate HTML coverage
-        run: cargo llvm-cov --workspace --html --output-dir target/llvm-cov/html
+      - name: Prepare coverage output directory
+        run: mkdir -p target/coverage-upload
 
       - name: Generate LCOV coverage
-        run: cargo llvm-cov --workspace --lcov --output-path target/llvm-cov/lcov.info
+        run: cargo llvm-cov --workspace --lcov --output-path target/coverage-upload/lcov.info
 
       - name: Generate coverage summary
-        run: cargo llvm-cov --workspace --summary-only | tee target/llvm-cov/summary.txt
+        run: cargo llvm-cov --workspace --summary-only | tee target/coverage-upload/summary.txt
+
+      - name: Generate HTML coverage
+        run: cargo llvm-cov --workspace --html --output-dir target/coverage-upload/html
 
       - name: Prepare upload
         run: |
-          cp target/llvm-cov/lcov.info target/llvm-cov/html/lcov.info
-          cp target/llvm-cov/summary.txt target/llvm-cov/html/summary.txt
+          cp target/coverage-upload/lcov.info target/coverage-upload/html/lcov.info
+          cp target/coverage-upload/summary.txt target/coverage-upload/html/summary.txt
 
       - name: Upload coverage to S3
         env:
@@ -52,6 +55,6 @@ jobs:
           AWS_ENDPOINT_URL_S3: ${{ secrets.AWS_ENDPOINT_URL_S3 }}
           BUCKET_NAME: ${{ secrets.BUCKET_NAME }}
         run: |
-          aws s3 sync target/llvm-cov/html "s3://${BUCKET_NAME}/${COVERAGE_PREFIX}/" \
+          aws s3 sync target/coverage-upload/html "s3://${BUCKET_NAME}/${COVERAGE_PREFIX}/" \
             --endpoint-url "${AWS_ENDPOINT_URL_S3}" \
             --delete
