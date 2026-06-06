@@ -9,6 +9,17 @@ use super::cursor::Parser;
 use super::expr::parse_numeric_expr;
 use super::terms::{parse_atomic_formula, parse_function_term, parse_term};
 
+fn assign_op_from_symbol(symbol: &str) -> Option<AssignOp> {
+    match symbol {
+        "assign" => Some(AssignOp::Assign),
+        "increase" => Some(AssignOp::Increase),
+        "decrease" => Some(AssignOp::Decrease),
+        "scale-up" => Some(AssignOp::ScaleUp),
+        "scale-down" => Some(AssignOp::ScaleDown),
+        _ => None,
+    }
+}
+
 /// Parse a PDDL effect. Handles conjunction, negation, forall, when (conditional), numeric
 /// assignment, temporal wrappers, and predicates (disambiguating `at` from temporal keyword).
 pub(super) fn parse_effect(p: &mut Parser) -> Result<Effect, ParseError> {
@@ -84,22 +95,15 @@ pub(super) fn parse_effect(p: &mut Parser) -> Result<Effect, ParseError> {
                         Ok(Effect::Predicate(AtomicFormula { name: s, args }))
                     }
                 }
-                "assign" | "increase" | "decrease" | "scale-up" | "scale-down" => {
-                    let op = match s.as_str() {
-                        "assign" => AssignOp::Assign,
-                        "increase" => AssignOp::Increase,
-                        "decrease" => AssignOp::Decrease,
-                        "scale-up" => AssignOp::ScaleUp,
-                        "scale-down" => AssignOp::ScaleDown,
-                        _ => unreachable!(),
-                    };
-                    p.advance()?;
-                    let function = parse_function_term(p)?;
-                    let expr = parse_numeric_expr(p)?;
-                    p.expect_rparen()?;
-                    Ok(Effect::NumericAssign { op, function, expr })
-                }
                 _ => {
+                    if let Some(op) = assign_op_from_symbol(&s) {
+                        p.advance()?;
+                        let function = parse_function_term(p)?;
+                        let expr = parse_numeric_expr(p)?;
+                        p.expect_rparen()?;
+                        return Ok(Effect::NumericAssign { op, function, expr });
+                    }
+
                     // Positive predicate effect
                     p.advance()?;
                     let mut args = Vec::new();

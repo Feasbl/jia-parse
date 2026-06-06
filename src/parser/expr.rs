@@ -8,6 +8,16 @@ use super::cursor::Parser;
 use super::terms::parse_term;
 use super::utils::parse_number_literal;
 
+fn binary_op_from_symbol(symbol: &str) -> Option<BinaryOp> {
+    match symbol {
+        "+" => Some(BinaryOp::Add),
+        "-" => Some(BinaryOp::Sub),
+        "*" => Some(BinaryOp::Mul),
+        "/" => Some(BinaryOp::Div),
+        _ => None,
+    }
+}
+
 /// Parse a numeric expression (arithmetic, function calls, ?duration, total-time, numbers).
 /// N-ary operators are folded left-associatively.
 pub(super) fn parse_numeric_expr(p: &mut Parser) -> Result<NumericExpr, ParseError> {
@@ -20,44 +30,34 @@ pub(super) fn parse_numeric_expr(p: &mut Parser) -> Result<NumericExpr, ParseErr
 
         if let TokenKind::Symbol(s) = &tok.kind {
             let s = s.clone();
-            match s.as_str() {
-                "+" | "-" | "*" | "/" => {
-                    p.advance()?;
-                    let op = match s.as_str() {
-                        "+" => BinaryOp::Add,
-                        "-" => BinaryOp::Sub,
-                        "*" => BinaryOp::Mul,
-                        "/" => BinaryOp::Div,
-                        _ => unreachable!(),
+            if let Some(op) = binary_op_from_symbol(&s) {
+                p.advance()?;
+                let first = parse_numeric_expr(p)?;
+                if p.at_rparen() && s == "-" {
+                    p.expect_rparen()?;
+                    return Ok(NumericExpr::Negate(Box::new(first)));
+                }
+                let mut result = first;
+                while !p.at_rparen() {
+                    let next = parse_numeric_expr(p)?;
+                    result = NumericExpr::BinaryOp {
+                        op: op.clone(),
+                        left: Box::new(result),
+                        right: Box::new(next),
                     };
-                    let first = parse_numeric_expr(p)?;
-                    if p.at_rparen() && s == "-" {
-                        p.expect_rparen()?;
-                        return Ok(NumericExpr::Negate(Box::new(first)));
-                    }
-                    let mut result = first;
-                    while !p.at_rparen() {
-                        let next = parse_numeric_expr(p)?;
-                        result = NumericExpr::BinaryOp {
-                            op: op.clone(),
-                            left: Box::new(result),
-                            right: Box::new(next),
-                        };
-                    }
-                    p.expect_rparen()?;
-                    return Ok(result);
                 }
-                _ => {
-                    // Function call
-                    p.advance()?;
-                    let mut args = Vec::new();
-                    while !p.at_rparen() {
-                        args.push(parse_term(p)?);
-                    }
-                    p.expect_rparen()?;
-                    return Ok(NumericExpr::FunctionCall(FunctionTerm { name: s, args }));
-                }
+                p.expect_rparen()?;
+                return Ok(result);
             }
+
+            // Function call
+            p.advance()?;
+            let mut args = Vec::new();
+            while !p.at_rparen() {
+                args.push(parse_term(p)?);
+            }
+            p.expect_rparen()?;
+            return Ok(NumericExpr::FunctionCall(FunctionTerm { name: s, args }));
         }
 
         return Err(ParseError::new(
@@ -116,46 +116,36 @@ pub(super) fn parse_metric_expr(p: &mut Parser) -> Result<NumericExpr, ParseErro
         // Binary op or function call
         if let TokenKind::Symbol(s) = &tok.kind {
             let s = s.clone();
-            match s.as_str() {
-                "+" | "-" | "*" | "/" => {
-                    p.advance()?;
-                    let op = match s.as_str() {
-                        "+" => BinaryOp::Add,
-                        "-" => BinaryOp::Sub,
-                        "*" => BinaryOp::Mul,
-                        "/" => BinaryOp::Div,
-                        _ => unreachable!(),
+            if let Some(op) = binary_op_from_symbol(&s) {
+                p.advance()?;
+                let first = parse_metric_expr(p)?;
+                if p.at_rparen() {
+                    // Unary minus
+                    p.expect_rparen()?;
+                    return Ok(NumericExpr::Negate(Box::new(first)));
+                }
+                // Fold n-ary into left-associative binary tree
+                let mut result = first;
+                while !p.at_rparen() {
+                    let next = parse_metric_expr(p)?;
+                    result = NumericExpr::BinaryOp {
+                        op: op.clone(),
+                        left: Box::new(result),
+                        right: Box::new(next),
                     };
-                    let first = parse_metric_expr(p)?;
-                    if p.at_rparen() {
-                        // Unary minus
-                        p.expect_rparen()?;
-                        return Ok(NumericExpr::Negate(Box::new(first)));
-                    }
-                    // Fold n-ary into left-associative binary tree
-                    let mut result = first;
-                    while !p.at_rparen() {
-                        let next = parse_metric_expr(p)?;
-                        result = NumericExpr::BinaryOp {
-                            op: op.clone(),
-                            left: Box::new(result),
-                            right: Box::new(next),
-                        };
-                    }
-                    p.expect_rparen()?;
-                    return Ok(result);
                 }
-                _ => {
-                    // Function call
-                    p.advance()?;
-                    let mut args = Vec::new();
-                    while !p.at_rparen() {
-                        args.push(parse_term(p)?);
-                    }
-                    p.expect_rparen()?;
-                    return Ok(NumericExpr::FunctionCall(FunctionTerm { name: s, args }));
-                }
+                p.expect_rparen()?;
+                return Ok(result);
             }
+
+            // Function call
+            p.advance()?;
+            let mut args = Vec::new();
+            while !p.at_rparen() {
+                args.push(parse_term(p)?);
+            }
+            p.expect_rparen()?;
+            return Ok(NumericExpr::FunctionCall(FunctionTerm { name: s, args }));
         }
 
         return Err(ParseError::new(

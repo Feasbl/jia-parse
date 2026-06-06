@@ -10,6 +10,35 @@ use crate::error::ParseError;
 use crate::jia_lang::ast::{ArithOp, Expr};
 use crate::jia_lang::lexer::TokenKind;
 
+#[derive(Clone, Copy)]
+enum UnaryExprFn {
+    StartOf,
+    EndOf,
+    DurationOf,
+    PresentOf,
+}
+
+impl UnaryExprFn {
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "start_of" => Some(Self::StartOf),
+            "end_of" => Some(Self::EndOf),
+            "duration_of" => Some(Self::DurationOf),
+            "present_of" => Some(Self::PresentOf),
+            _ => None,
+        }
+    }
+
+    fn apply(self, arg: String) -> Expr {
+        match self {
+            Self::StartOf => Expr::StartOf(arg),
+            Self::EndOf => Expr::EndOf(arg),
+            Self::DurationOf => Expr::DurationOf(arg),
+            Self::PresentOf => Expr::PresentOf(arg),
+        }
+    }
+}
+
 impl<'a> Parser<'a> {
     /// Parse an expression.
     pub fn parse_expr(&mut self) -> Result<Expr, ParseError> {
@@ -80,26 +109,16 @@ impl<'a> Parser<'a> {
             }
             Some(TokenKind::Ident(name)) => {
                 // Check if it's a function call: start_of, end_of, duration_of, present_of
-                match name.as_str() {
-                    "start_of" | "end_of" | "duration_of" | "present_of" => {
-                        let func = name.clone();
-                        self.advance();
-                        self.expect_token(TokenKind::LParen)?;
-                        let arg = self.expect_ident()?;
-                        self.expect_token(TokenKind::RParen)?;
-                        match func.as_str() {
-                            "start_of" => Ok(Expr::StartOf(arg)),
-                            "end_of" => Ok(Expr::EndOf(arg)),
-                            "duration_of" => Ok(Expr::DurationOf(arg)),
-                            "present_of" => Ok(Expr::PresentOf(arg)),
-                            _ => unreachable!(),
-                        }
-                    }
-                    _ => {
-                        let name = name.clone();
-                        self.advance();
-                        Ok(Expr::Var(name))
-                    }
+                let name = name.clone();
+                if let Some(function) = UnaryExprFn::from_name(&name) {
+                    self.advance();
+                    self.expect_token(TokenKind::LParen)?;
+                    let arg = self.expect_ident()?;
+                    self.expect_token(TokenKind::RParen)?;
+                    Ok(function.apply(arg))
+                } else {
+                    self.advance();
+                    Ok(Expr::Var(name))
                 }
             }
             _ => {

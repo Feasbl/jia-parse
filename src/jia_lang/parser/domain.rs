@@ -17,6 +17,32 @@ use crate::error::ParseError;
 use crate::jia_lang::ast::{Domain, DomainStmt};
 use crate::jia_lang::lexer::TokenKind;
 
+#[derive(Clone, Copy)]
+enum IntervalAttr {
+    Duration,
+    Start,
+    End,
+}
+
+impl IntervalAttr {
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "duration" => Some(Self::Duration),
+            "start" => Some(Self::Start),
+            "end" => Some(Self::End),
+            _ => None,
+        }
+    }
+
+    fn to_stmt(self, intervals: Vec<String>, domain: Domain) -> DomainStmt {
+        match self {
+            Self::Duration => DomainStmt::IntervalDuration { intervals, domain },
+            Self::Start => DomainStmt::IntervalStart { intervals, domain },
+            Self::End => DomainStmt::IntervalEnd { intervals, domain },
+        }
+    }
+}
+
 impl<'a> Parser<'a> {
     /// Parse a `domains { ... }` block.
     pub fn parse_domains_block(&mut self) -> Result<Vec<DomainStmt>, ParseError> {
@@ -43,8 +69,11 @@ impl<'a> Parser<'a> {
             }
         };
 
+        if let Some(attr) = IntervalAttr::from_name(name.as_str()) {
+            return self.parse_interval_attr_stmt(attr);
+        }
+
         match name.as_str() {
-            "duration" | "start" | "end" => self.parse_interval_attr_stmt(),
             "optional" => self.parse_optional_stmt(),
             "demand" => self.parse_demand_stmt(),
             _ => {
@@ -65,19 +94,14 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an interval attribute statement: `duration(a, b) = 3` or `start(a) in 0..10`
-    fn parse_interval_attr_stmt(&mut self) -> Result<DomainStmt, ParseError> {
-        let attr = self.expect_ident()?;
+    fn parse_interval_attr_stmt(&mut self, attr: IntervalAttr) -> Result<DomainStmt, ParseError> {
+        self.expect_ident()?;
         self.expect_token(TokenKind::LParen)?;
         let intervals = self.parse_ident_list()?;
         self.expect_token(TokenKind::RParen)?;
         let domain = self.parse_domain_spec()?;
 
-        match attr.as_str() {
-            "duration" => Ok(DomainStmt::IntervalDuration { intervals, domain }),
-            "start" => Ok(DomainStmt::IntervalStart { intervals, domain }),
-            "end" => Ok(DomainStmt::IntervalEnd { intervals, domain }),
-            _ => unreachable!(),
-        }
+        Ok(attr.to_stmt(intervals, domain))
     }
 
     /// Parse `optional(x, y, z)`
