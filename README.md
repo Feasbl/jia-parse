@@ -1,5 +1,7 @@
 # jia-parse
 
+[![coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Ffeasbl-cdn.t3.tigrisfiles.io%2Fcoverage%2Fjia-parse%2Fcoverage-badge.json)](https://feasbl-cdn.t3.tigrisfiles.io/coverage/jia-parse/)
+
 `jia-parse` is a command-line parser for planning and modelling files used by Jia.
 
 It currently parses:

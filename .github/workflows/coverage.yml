@@ -39,6 +39,58 @@ jobs:
       - name: Generate coverage summary
         run: cargo llvm-cov --workspace --summary-only | tee target/coverage-upload/summary.txt
 
+      - name: Generate coverage JSON
+        run: |
+          python3 <<'PY'
+          import json
+          from pathlib import Path
+
+          lcov = Path("target/coverage-upload/lcov.info").read_text().splitlines()
+          lines_found = 0
+          lines_hit = 0
+
+          for line in lcov:
+              if line.startswith("LF:"):
+                  lines_found += int(line.split(":", 1)[1])
+              elif line.startswith("LH:"):
+                  lines_hit += int(line.split(":", 1)[1])
+
+          percent = 100.0 if lines_found == 0 else (lines_hit / lines_found) * 100.0
+          rounded = round(percent, 2)
+
+          if rounded >= 90:
+              color = "brightgreen"
+          elif rounded >= 80:
+              color = "green"
+          elif rounded >= 70:
+              color = "yellowgreen"
+          elif rounded >= 60:
+              color = "yellow"
+          else:
+              color = "red"
+
+          summary = {
+              "lines": {
+                  "covered": lines_hit,
+                  "total": lines_found,
+                  "percent": rounded,
+              }
+          }
+          badge = {
+              "schemaVersion": 1,
+              "label": "coverage",
+              "message": f"{rounded:.2f}%",
+              "color": color,
+          }
+
+          Path("target/coverage-upload/coverage-summary.json").write_text(
+              json.dumps(summary, indent=2) + "\n"
+          )
+          Path("target/coverage-upload/coverage-badge.json").write_text(
+              json.dumps(badge, indent=2) + "\n"
+          )
+          PY
+
       - name: Generate HTML coverage
         run: cargo llvm-cov --workspace --html --output-dir target/coverage-upload/html
 
@@ -46,6 +98,8 @@ jobs:
         run: |
           cp target/coverage-upload/lcov.info target/coverage-upload/html/lcov.info
           cp target/coverage-upload/summary.txt target/coverage-upload/html/summary.txt
+          cp target/coverage-upload/coverage-summary.json target/coverage-upload/html/coverage-summary.json
+          cp target/coverage-upload/coverage-badge.json target/coverage-upload/html/coverage-badge.json
 
       - name: Upload coverage to S3
         env:
