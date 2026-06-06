@@ -254,3 +254,78 @@ pub(super) fn parse_condition(p: &mut Parser) -> Result<Condition, ParseError> {
         p.current_span(),
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::{CompareOp, Term};
+    use crate::lexer::tokenize;
+
+    fn parse(input: &str) -> Result<Condition, ParseError> {
+        let tokens = tokenize(input)?;
+        let mut parser = Parser::new(&tokens);
+        parse_condition(&mut parser)
+    }
+
+    #[test]
+    fn parses_named_preference_and_temporal_conditions() {
+        let condition =
+            parse("(and (preference prefer-ready (ready a)) (at end (done a)))").unwrap();
+
+        let Condition::And(conditions) = condition else {
+            return;
+        };
+
+        assert!(matches!(
+            &conditions[0],
+            Condition::Preference {
+                name: Some(name),
+                ..
+            } if name == "prefer-ready"
+        ));
+        assert!(matches!(&conditions[1], Condition::AtEnd(_)));
+    }
+
+    #[test]
+    fn parses_all_numeric_comparison_operators() {
+        for (input, expected) in [
+            ("(< (cost) 5)", CompareOp::Lt),
+            ("(<= (cost) 5)", CompareOp::Lte),
+            ("(> (cost) 5)", CompareOp::Gt),
+            ("(>= (cost) 5)", CompareOp::Gte),
+        ] {
+            let condition = parse(input).unwrap();
+            assert!(matches!(
+                condition,
+                Condition::NumericComparison { op, .. } if op == expected
+            ));
+        }
+    }
+
+    #[test]
+    fn parses_term_equality_with_variables() {
+        let condition = parse("(= ?x target)").unwrap();
+
+        assert!(matches!(
+            condition,
+            Condition::Equals(Term::Variable(variable), Term::Name(name))
+                if variable == "?x" && name == "target"
+        ));
+    }
+
+    #[test]
+    fn reports_condition_edge_errors() {
+        for input in [
+            "(",
+            "(and (ready a)",
+            "(preference name)",
+            "(at",
+            "(over",
+            "(<=)",
+            "(ready 1)",
+            "ready",
+        ] {
+            assert!(parse(input).is_err(), "{input}");
+        }
+    }
+}

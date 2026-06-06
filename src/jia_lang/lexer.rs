@@ -175,9 +175,15 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, ParseError> {
                     pos += 1;
                 }
                 let text = &input[start..pos];
-                let value: f64 = text
-                    .parse()
-                    .map_err(|_| ParseError::new(format!("invalid float literal: {text}"), span))?;
+                let value: f64 = match text.parse() {
+                    Ok(value) => value,
+                    Err(_) => {
+                        return Err(ParseError::new(
+                            format!("invalid float literal: {text}"),
+                            span,
+                        ));
+                    }
+                };
                 tokens.push(Token {
                     kind: TokenKind::Float(value),
                     span,

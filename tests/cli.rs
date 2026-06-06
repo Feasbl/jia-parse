@@ -149,6 +149,41 @@ fn pddl_missing_inputs_and_malformed_file_fail() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("parse error"));
+
+    let mut bad_problem = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(
+        &mut bad_problem,
+        b"(define (problem bad) (:domain d) (:goal (",
+    )
+    .unwrap();
+    Command::cargo_bin("jia-parse")
+        .unwrap()
+        .args(["pddl", "--problem", bad_problem.path().to_str().unwrap()])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("parse error"));
+
+    Command::cargo_bin("jia-parse")
+        .unwrap()
+        .args([
+            "pddl",
+            "--domain",
+            "tests/fixtures/pddl/missing-domain.pddl",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("reading"));
+
+    Command::cargo_bin("jia-parse")
+        .unwrap()
+        .args([
+            "pddl",
+            "--problem",
+            "tests/fixtures/pddl/missing-problem.pddl",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("reading"));
 }
 
 #[test]
@@ -242,4 +277,11 @@ fn jia_validate_and_malformed_file_behave_correctly() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("parse error"));
+
+    Command::cargo_bin("jia-parse")
+        .unwrap()
+        .args(["jia", "tests/fixtures/jia/missing.jia"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("reading"));
 }

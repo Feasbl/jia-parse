@@ -302,8 +302,10 @@ mod tests {
     fn test_keywords_and_variables() {
         let tokens = tokenize("(:requirements :typing) (?x - type1)").unwrap();
         assert!(tokens[1].keyword_eq("requirements"));
+        assert!(!tokens[1].keyword_eq("strips"));
         assert!(tokens[2].keyword_eq("typing"));
         assert!(tokens[5].variable_eq("?x"));
+        assert!(!tokens[5].variable_eq("?y"));
     }
 
     #[test]
@@ -339,5 +341,8 @@ mod tests {
 
         let err = tokenize("@").unwrap_err();
         assert!(err.message.contains("unexpected character"));
+
+        let err = tokenize("1.2.3").unwrap_err();
+        assert!(err.message.contains("invalid number"));
     }
 }

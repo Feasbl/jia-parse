@@ -131,7 +131,7 @@ pub fn parse_problem_str(input: &str) -> Result<Problem, ParseError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::Optimization;
+    use crate::ast::{AssignOp, Condition, DurationConstraint, Effect, Optimization};
 
     #[test]
     fn test_parse_minimal_domain() {
@@ -207,6 +207,32 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_functions_derived_and_duration_inequalities() {
+        let input = r#"
+(define (domain test)
+  (:requirements :typing :numeric-fluents :durative-actions :derived-predicates)
+  (:predicates (ready ?x - obj))
+  (:functions (fuel ?x - obj) (total-cost) - number)
+  (:derived (available ?x - obj) (ready ?x))
+  (:durative-action wait
+    :parameters (?x - obj)
+    :duration (and (>= ?duration 1) (<= ?duration 5))
+    :condition (and (at start (ready ?x)))
+    :effect (and))
+)
+"#;
+
+        let domain = parse_domain_str(input).unwrap();
+
+        assert_eq!(domain.functions.len(), 2);
+        assert_eq!(domain.derived_predicates.len(), 1);
+        assert!(matches!(
+            domain.durative_actions[0].duration,
+            DurationConstraint::And(_)
+        ));
+    }
+
+    #[test]
     fn test_parse_numeric_precondition() {
         let input = r#"
 (define (domain test)
@@ -226,6 +252,179 @@ mod tests {
         let da = &domain.durative_actions[0];
         assert!(da.condition.is_some());
         assert!(da.effect.is_some());
+    }
+
+    #[test]
+    fn test_parse_broad_condition_variants() {
+        let input = r#"
+(define (problem test)
+  (:domain d)
+  (:init)
+  (:goal
+    (and
+      (or (ready a) (ready b))
+      (not (blocked a))
+      (imply (ready a) (ready b))
+      (forall (?x - obj) (ready ?x))
+      (exists (?x - obj) (ready ?x))
+      (preference (ready a))
+      (at a loc)
+      (over a b)
+      (= a b)
+      (= (cost) 0)
+      (< (cost) 10)
+      (> (cost) 0)
+      (always (ready a))
+      (sometime (ready b))
+      (at-most-once (ready a))
+      (within 5 (ready a))
+      (sometime-before (ready a) (ready b))
+      (sometime-after (ready a) (ready b))
+      (always-within 3 (ready a) (ready b))
+      (hold-during 1 2 (ready a))
+      (hold-after 4 (ready a))
+    ))
+)
+"#;
+
+        let problem = parse_problem_str(input).unwrap();
+        let conditions = match &problem.goal {
+            Condition::And(conditions) => Some(conditions),
+            _ => None,
+        }
+        .unwrap();
+
+        assert!(conditions.iter().any(|c| matches!(c, Condition::Or(_))));
+        assert!(conditions.iter().any(|c| matches!(c, Condition::Not(_))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::Imply(_, _))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::Forall { .. })));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::Exists { .. })));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::Preference { name: None, .. })));
+        assert!(conditions.iter().any(|c| matches!(
+            c,
+            Condition::Predicate(predicate) if predicate.name == "at"
+        )));
+        assert!(conditions.iter().any(|c| matches!(
+            c,
+            Condition::Predicate(predicate) if predicate.name == "over"
+        )));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::Equals(_, _))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::NumericComparison { .. })));
+        assert!(conditions.iter().any(|c| matches!(c, Condition::Always(_))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::Sometime(_))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::AtMostOnce(_))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::Within(_, _))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::SometimeBefore(_, _))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::SometimeAfter(_, _))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::AlwaysWithin(_, _, _))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::HoldDuring(_, _, _))));
+        assert!(conditions
+            .iter()
+            .any(|c| matches!(c, Condition::HoldAfter(_, _))));
+    }
+
+    #[test]
+    fn test_parse_broad_effect_variants() {
+        let input = r#"
+(define (domain test)
+  (:action a
+    :parameters (?x - obj)
+    :precondition (and)
+    :effect
+      (and
+        (at ?x loc)
+        (assign (cost) 1)
+        (increase (cost) 2)
+        (scale-up (cost) 3)
+        (when (ready ?x) (decrease (cost) 1))))
+  (:durative-action d
+    :parameters (?x - obj)
+    :duration (= ?duration 1)
+    :condition (and)
+    :effect
+      (and
+        (at start (at ?x loc))
+        (at end (scale-down (cost) 2))))
+)
+"#;
+
+        let domain = parse_domain_str(input).unwrap();
+        let effects = domain.actions[0]
+            .effect
+            .as_ref()
+            .and_then(|effect| match effect {
+                Effect::And(effects) => Some(effects),
+                _ => None,
+            })
+            .unwrap();
+
+        assert!(effects.iter().any(|e| matches!(
+            e,
+            Effect::Predicate(predicate) if predicate.name == "at"
+        )));
+        assert!(effects.iter().any(|e| matches!(
+            e,
+            Effect::NumericAssign {
+                op: AssignOp::Assign,
+                ..
+            }
+        )));
+        assert!(effects.iter().any(|e| matches!(
+            e,
+            Effect::NumericAssign {
+                op: AssignOp::Increase,
+                ..
+            }
+        )));
+        assert!(effects.iter().any(|e| matches!(
+            e,
+            Effect::NumericAssign {
+                op: AssignOp::ScaleUp,
+                ..
+            }
+        )));
+        assert!(effects.iter().any(|e| matches!(e, Effect::When { .. })));
+
+        let durative_effects = domain.durative_actions[0]
+            .effect
+            .as_ref()
+            .and_then(|effect| match effect {
+                Effect::And(effects) => Some(effects),
+                _ => None,
+            })
+            .unwrap();
+        assert!(durative_effects
+            .iter()
+            .any(|e| matches!(e, Effect::AtStart(_))));
+        assert!(durative_effects
+            .iter()
+            .any(|e| matches!(e, Effect::AtEnd(_))));
     }
 
     #[test]

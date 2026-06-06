@@ -552,6 +552,106 @@ mod tests {
     use super::*;
 
     #[test]
+    fn domain_sort_orders_all_named_declarations() {
+        let mut domain = Domain {
+            name: "d".to_string(),
+            requirements: Vec::new(),
+            types: vec![TypedGroup {
+                items: vec!["z".to_string(), "a".to_string()],
+                type_name: None,
+            }],
+            constants: vec![TypedGroup {
+                items: vec!["c2".to_string(), "c1".to_string()],
+                type_name: None,
+            }],
+            predicates: vec![
+                PredicateDecl {
+                    name: "zpred".to_string(),
+                    parameters: Vec::new(),
+                },
+                PredicateDecl {
+                    name: "apred".to_string(),
+                    parameters: Vec::new(),
+                },
+            ],
+            functions: vec![
+                FunctionDecl {
+                    name: "zfunc".to_string(),
+                    parameters: Vec::new(),
+                    return_type: None,
+                },
+                FunctionDecl {
+                    name: "afunc".to_string(),
+                    parameters: Vec::new(),
+                    return_type: None,
+                },
+            ],
+            actions: vec![
+                BasicAction {
+                    name: "zact".to_string(),
+                    parameters: Vec::new(),
+                    precondition: None,
+                    effect: None,
+                },
+                BasicAction {
+                    name: "aact".to_string(),
+                    parameters: Vec::new(),
+                    precondition: None,
+                    effect: None,
+                },
+            ],
+            durative_actions: vec![
+                DurativeAction {
+                    name: "zdur".to_string(),
+                    parameters: Vec::new(),
+                    duration: DurationConstraint::Cmp {
+                        op: CompareOp::Eq,
+                        expr: NumericExpr::Number(1.0),
+                    },
+                    condition: None,
+                    effect: None,
+                },
+                DurativeAction {
+                    name: "adur".to_string(),
+                    parameters: Vec::new(),
+                    duration: DurationConstraint::Cmp {
+                        op: CompareOp::Eq,
+                        expr: NumericExpr::Number(1.0),
+                    },
+                    condition: None,
+                    effect: None,
+                },
+            ],
+            derived_predicates: vec![
+                DerivedPredicate {
+                    predicate: AtomicFormula {
+                        name: "zderived".to_string(),
+                        args: Vec::new(),
+                    },
+                    condition: Condition::And(Vec::new()),
+                },
+                DerivedPredicate {
+                    predicate: AtomicFormula {
+                        name: "aderived".to_string(),
+                        args: Vec::new(),
+                    },
+                    condition: Condition::And(Vec::new()),
+                },
+            ],
+        };
+
+        domain.sort_alphabetically();
+
+        assert_eq!(domain.types[0].items, ["a", "z"]);
+        assert_eq!(domain.constants[0].items, ["c1", "c2"]);
+        assert_eq!(domain.predicates[0].name, "apred");
+        assert_eq!(domain.functions[0].name, "afunc");
+        assert_eq!(domain.actions[0].name, "aact");
+        assert_eq!(domain.durative_actions[0].name, "adur");
+        assert_eq!(domain.derived_predicates[0].predicate.name, "aderived");
+    }
+
+    #[test]
     fn problem_sort_handles_zero_arity_predicates_and_variable_terms() {
         let mut problem = Problem {
             name: "p".to_string(),

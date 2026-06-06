@@ -233,6 +233,7 @@ mod tests {
 
     #[test]
     fn numeric_expr_variants() {
+        assert_eq!(binary_op_from_symbol("%"), None);
         assert!(matches!(parse_numeric("(- 5)"), NumericExpr::Negate(_)));
         assert!(matches!(
             parse_numeric("(/ (* 8 2) (+ 1 3))"),
@@ -256,11 +257,19 @@ mod tests {
         let mut parser = Parser::new(&tokens);
         assert!(parse_numeric_expr(&mut parser).is_err());
 
+        let tokens = tokenize("(").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_numeric_expr(&mut parser).is_err());
+
         let tokens = tokenize("?x").unwrap();
         let mut parser = Parser::new(&tokens);
         assert!(parse_numeric_expr(&mut parser).is_err());
 
         let tokens = tokenize(")").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_numeric_expr(&mut parser).is_err());
+
+        let tokens = Vec::new();
         let mut parser = Parser::new(&tokens);
         assert!(parse_numeric_expr(&mut parser).is_err());
     }

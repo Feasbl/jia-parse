@@ -121,3 +121,62 @@ pub(super) fn parse_effect(p: &mut Parser) -> Result<Effect, ParseError> {
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lexer::tokenize;
+
+    fn parse(input: &str) -> Result<Effect, ParseError> {
+        let tokens = tokenize(input)?;
+        let mut parser = Parser::new(&tokens);
+        parse_effect(&mut parser)
+    }
+
+    #[test]
+    fn parses_quantified_negated_and_temporal_effects() {
+        let effect = parse(
+            "(and (forall (?x - obj) (not (ready ?x))) (at start (ready a)) (at end (done a)))",
+        )
+        .unwrap();
+
+        let Effect::And(effects) = effect else {
+            return;
+        };
+
+        assert!(matches!(&effects[0], Effect::Forall { .. }));
+        assert!(matches!(&effects[1], Effect::AtStart(_)));
+        assert!(matches!(&effects[2], Effect::AtEnd(_)));
+    }
+
+    #[test]
+    fn parses_all_numeric_assignment_ops() {
+        for input in [
+            "(assign (cost) 1)",
+            "(increase (cost) 1)",
+            "(decrease (cost) 1)",
+            "(scale-up (cost) 1)",
+            "(scale-down (cost) 1)",
+        ] {
+            assert!(matches!(
+                parse(input).unwrap(),
+                Effect::NumericAssign { .. }
+            ));
+        }
+    }
+
+    #[test]
+    fn reports_effect_edge_errors() {
+        for input in [
+            "(",
+            "(not)",
+            "(forall (?x - obj))",
+            "(when (ready a))",
+            "(at",
+            "(ready 1)",
+            "ready",
+        ] {
+            assert!(parse(input).is_err(), "{input}");
+        }
+    }
+}
