@@ -1,8 +1,8 @@
 //! Abstract Syntax Tree (AST) for PDDL domain and problem files.
 //!
-//! Every type here is produced by the parser (see [`super::parser`]) and consumed by the grounder
-//! (see [`crate::grounder`]). The AST is a direct structural representation of the PDDL syntax:
-//! no semantic analysis, type checking, or grounding is performed at this stage.
+//! Every type here is produced by the parser (see [`super::parser`]). The AST is a direct
+//! structural representation of the PDDL syntax: no semantic analysis, type checking, or
+//! planning is performed at this stage.
 
 use serde::Serialize;
 
@@ -358,8 +358,7 @@ pub struct BasicAction {
 
 /// A temporal PDDL action defined with `:durative-action`.
 ///
-/// Conditions and effects typically contain temporal wrappers (`at start`, `at end`,
-/// `over all`) which the grounder flattens into separate vectors.
+/// Conditions and effects may contain temporal wrappers (`at start`, `at end`, `over all`).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct DurativeAction {
     /// The action name (e.g. `"drive"`).
