@@ -32,8 +32,9 @@ fn parses_advanced_pddl_domain_features() {
     assert_eq!(load.parameters.len(), 4);
     assert!(matches!(load.precondition, Some(Condition::And(_))));
 
+    assert!(matches!(load.effect, Some(Effect::And(_))));
     let Some(Effect::And(effects)) = &load.effect else {
-        panic!("expected load effect conjunction");
+        return;
     };
     assert!(effects.iter().any(|effect| matches!(
         effect,
@@ -77,9 +78,7 @@ fn parses_advanced_pddl_problem_features() {
     assert!(matches!(problem.goal, Condition::And(_)));
     assert!(matches!(problem.constraints, Some(Condition::And(_))));
 
-    let Some(MetricSpec { optimization, expr }) = &problem.metric else {
-        panic!("expected metric");
-    };
+    let MetricSpec { optimization, expr } = problem.metric.as_ref().expect("expected metric");
     assert_eq!(*optimization, Optimization::Maximize);
     assert!(matches!(expr, NumericExpr::BinaryOp { .. }));
 }

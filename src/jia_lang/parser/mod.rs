@@ -312,6 +312,12 @@ minimize makespan
     }
 
     #[test]
+    fn test_empty_token_stream_errors_cleanly() {
+        let tokens = Vec::new();
+        assert!(parse_model(&tokens).is_err());
+    }
+
+    #[test]
     fn test_model_tag_unknown() {
         let err = parse_model_str("@model foo\nmodel test").unwrap_err();
         assert!(err.message.contains("unknown model type"));
@@ -328,28 +334,26 @@ minimize makespan
     #[test]
     fn test_float_in_expression() {
         let expr = parse_expr_str("3.25 + x").unwrap();
-        match expr {
+        assert_eq!(
+            expr,
             Expr::BinaryOp {
                 op: ArithOp::Add,
-                left,
-                right,
-            } => {
-                assert_eq!(*left, Expr::Float(3.25));
-                assert_eq!(*right, Expr::Var("x".to_string()));
+                left: Box::new(Expr::Float(3.25)),
+                right: Box::new(Expr::Var("x".to_string())),
             }
-            _ => panic!("expected BinaryOp"),
-        }
+        );
     }
 
     #[test]
     fn test_division_in_expression() {
         let expr = parse_expr_str("x / 2").unwrap();
-        match expr {
+        assert!(matches!(
+            expr,
             Expr::BinaryOp {
-                op: ArithOp::Div, ..
-            } => {}
-            _ => panic!("expected division"),
-        }
+                op: ArithOp::Div,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -400,10 +404,10 @@ minimize 2 * x + 3 * y
         )
         .unwrap();
         assert_eq!(model.constraints.len(), 1);
-        match &model.constraints[0] {
-            Constraint::Comparison { op, .. } => assert_eq!(*op, CmpOp::Eq),
-            _ => panic!("expected comparison"),
-        }
+        assert!(matches!(
+            &model.constraints[0],
+            Constraint::Comparison { op, .. } if *op == CmpOp::Eq
+        ));
     }
 
     #[test]

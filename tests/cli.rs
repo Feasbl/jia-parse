@@ -107,6 +107,34 @@ fn pddl_stats_and_validate_modes_work() {
 }
 
 #[test]
+fn pddl_problem_stats_report_absent_metric_and_constraints() {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(
+        &mut file,
+        br#"(define (problem noextras)
+  (:domain d)
+  (:init)
+  (:goal (and))
+)"#,
+    )
+    .unwrap();
+
+    Command::cargo_bin("jia-parse")
+        .unwrap()
+        .args([
+            "pddl",
+            "--problem",
+            file.path().to_str().unwrap(),
+            "--stats",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Problem: noextras"))
+        .stdout(predicate::str::contains("Has metric: no"))
+        .stdout(predicate::str::contains("Has constraints: no"));
+}
+
+#[test]
 fn pddl_missing_inputs_and_malformed_file_fail() {
     Command::cargo_bin("jia-parse")
         .unwrap()

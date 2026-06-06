@@ -219,10 +219,10 @@ mod tests {
     #[test]
     fn test_comparison_with_arithmetic() {
         let cs = parse_constraints("constraints { start_of(b) >= end_of(a) + gap }");
-        match &cs[0] {
-            Constraint::Comparison { op, .. } => assert_eq!(*op, CmpOp::Ge),
-            _ => panic!("expected comparison"),
-        }
+        assert!(matches!(
+            &cs[0],
+            Constraint::Comparison { op, .. } if *op == CmpOp::Ge
+        ));
     }
 
     #[test]
@@ -233,10 +233,10 @@ mod tests {
             ("constraints { x != 1 }", CmpOp::Ne),
         ] {
             let cs = parse_constraints(input);
-            match &cs[0] {
-                Constraint::Comparison { op, .. } => assert_eq!(*op, expected),
-                _ => panic!("expected comparison"),
-            }
+            assert!(matches!(
+                &cs[0],
+                Constraint::Comparison { op, .. } if *op == expected
+            ));
         }
 
         let tokens = tokenize("constraints { x + 1 }").unwrap();

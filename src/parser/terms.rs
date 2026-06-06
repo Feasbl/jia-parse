@@ -157,6 +157,12 @@ mod tests {
 
         assert_eq!(groups[0].type_name.as_deref(), Some("thing"));
         assert_eq!(groups[1].type_name.as_deref(), Some("either:x:y"));
+
+        let tokens = tokenize("?a ?b ?c").unwrap();
+        let mut parser = Parser::new(&tokens);
+        let groups = parse_typed_list_vars(&mut parser).unwrap();
+        assert_eq!(groups[0].items.len(), 3);
+        assert!(groups[0].type_name.is_none());
     }
 
     #[test]

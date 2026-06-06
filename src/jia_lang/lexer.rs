@@ -341,4 +341,10 @@ mod tests {
         assert_eq!(tokens[1].kind, TokenKind::Ident("model".to_string()));
         assert_eq!(tokens[2].kind, TokenKind::Ident("lp".to_string()));
     }
+
+    #[test]
+    fn test_integer_overflow_reports_error() {
+        let err = tokenize("999999999999999999999999999999999999").unwrap_err();
+        assert!(err.message.contains("invalid number literal"));
+    }
 }

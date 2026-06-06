@@ -387,6 +387,13 @@ constraints {
             }),
             4
         );
+        assert_eq!(
+            token_text_len(&Token {
+                kind: TokenKind::At,
+                span: Span::new(0, 1, 1)
+            }),
+            1
+        );
     }
 
     #[test]

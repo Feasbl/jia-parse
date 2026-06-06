@@ -270,6 +270,31 @@ mod tests {
     }
 
     #[test]
+    fn parser_skips_unknown_action_fields_with_sexp_values() {
+        let domain = parse_domain_str(
+            r#"
+(define (domain test)
+  (:action a
+    :parameters ()
+    :precondition (and)
+    :unknown-action-field (ignored value)
+    :effect (and))
+  (:durative-action d
+    :parameters ()
+    :duration (= ?duration 1)
+    :condition (and)
+    :unknown-durative-field (ignored value)
+    :effect (and))
+)
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(domain.actions.len(), 1);
+        assert_eq!(domain.durative_actions.len(), 1);
+    }
+
+    #[test]
     fn parser_reports_malformed_conditions_effects_and_metrics() {
         for input in [
             "(define (problem p) (:domain d) (:goal 42))",

@@ -251,6 +251,21 @@ mod tests {
     }
 
     #[test]
+    fn numeric_expr_errors() {
+        let tokens = tokenize("(42)").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_numeric_expr(&mut parser).is_err());
+
+        let tokens = tokenize("?x").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_numeric_expr(&mut parser).is_err());
+
+        let tokens = tokenize(")").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_numeric_expr(&mut parser).is_err());
+    }
+
+    #[test]
     fn metric_expr_variants_and_errors() {
         assert_eq!(parse_metric("(total-time)"), NumericExpr::TotalTime);
         assert_eq!(parse_metric("total-time"), NumericExpr::TotalTime);
@@ -273,6 +288,18 @@ mod tests {
         assert!(parse_metric_expr(&mut parser).is_err());
 
         let tokens = tokenize("(42)").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_metric_expr(&mut parser).is_err());
+
+        let tokens = tokenize("(").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_metric_expr(&mut parser).is_err());
+
+        let tokens = tokenize("?x").unwrap();
+        let mut parser = Parser::new(&tokens);
+        assert!(parse_metric_expr(&mut parser).is_err());
+
+        let tokens = Vec::new();
         let mut parser = Parser::new(&tokens);
         assert!(parse_metric_expr(&mut parser).is_err());
     }
